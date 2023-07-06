@@ -1,0 +1,9 @@
+# database config
+db_host=
+db_database=
+db_user=
+db_passwd=
+# query start
+start_page=1
+# query end
+end_page=50
