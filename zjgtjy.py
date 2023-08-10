@@ -20,7 +20,7 @@ def httpGet(url):
             res = requests.get(url)
             return res
         except requests.exceptions.ConnectionError as e:
-           print('连接错误，准备重试。。。')
+           print('连接错误，准备重试...')
            err = e 
            time.sleep(SLEEP_SECONDS)
     raise err
@@ -161,9 +161,49 @@ def insertZjgtjy(conn, landInfo):
     conn.commit()
     cursor.close()
 
+def generateFinalData(conn):
+    sql = "drop table zjgtjy3_dist"
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
+    sql = r"""
+    create table zjgtjy3_dist
+    select
+zt.ztmc as '状态',
+case when z.sub_region in ('330203',
+'330205',
+'330206',
+'330211',
+'330212','330283', '330213','330201') then '1' else '0' END as '市六区',
+administrative_regioncode as '行政区划',
+resource_id,
+resource_number as '资源编号',
+resource_name as '资源名称',
+resource_location as '位置',
+plan_purpose_second_type as '用途',
+land_use_detail as '用途明细',
+announcement_pub_time as '公告发布时间',
+end_time as '成交时间',
+assignment_area as '用地面积',
+plot_ratio_s as '容积率',
+assignment_area * plot_ratio_s as '建筑面积',
+margin as '保证金',
+start_price as '起拍价',
+round(start_price /(assignment_area*plot_ratio_s) * 10000,2) as '起始单价',
+deal_price as '成交价',
+round(deal_price/(assignment_area*plot_ratio_s)*10000,2) as '成交单价',
+the_unit as '竞得单位',
+concat(round((deal_price-start_price)/start_price * 100,1),'%') as '溢价率'
+from zjgtjy3 z
+left join district d on z.sub_region = d.code 
+left join zjzt zt on z.resource_stage = zt.zyjd"""
+    cursor.execute(sql)
+    conn.commit()
+    cursor.close()
+
 def run(config):
     conn = base.getDbConnection(config)
-    # refreshLandInfo(conn)
+    refreshLandInfo(conn)
     for i in range(int(config['start_page']), int(config['end_page']) + 1):
         print('查询第' + str(i) + '页')
         landList = getLandList(i)
@@ -177,6 +217,7 @@ def run(config):
                 print(landInfo)
                 insertZjgtjy(conn, landInfo)
                 time.sleep(SLEEP_SECONDS)
+    generateFinalData(conn)
     conn.close()
 
 if __name__ == '__main__':
