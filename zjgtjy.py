@@ -9,7 +9,8 @@ import base
 from inflection import underscore,camelize
 
 
-LIST_URL = "https://www.zjzrzyjy.com/trade/view/landbidding/queryLandBidding?currentPage=%d&pageSize=%d&sortWay=desc&sortField=score_total"
+LIST_URL = "https://www.zjzrzyjy.com/trade/view/landbidding/querylandBidding?currentPage=%d&pageSize=%d&sortWay=desc&sortField=ZYKSSJ"
+# "https://www.zjzrzyjy.com/trade/view/landbidding/querylandBidding?currentPage=%d&pageSize=%d&sortWay=desc&sortField=ZYKSSJ"
 RESOURCE_URL = "https://www.zjzrzyjy.com/trade/view/landbidding/queryResourceDetail?resourceId=%s"
 SLEEP_SECONDS = 1
 
@@ -59,6 +60,8 @@ def refreshLandInfo(conn):
         resourceId = row[0]
         resourceStage = row[1]
         landData = queryResourceDetail(resourceId)
+        if landData is None:
+            continue
         if(landData['resourceStage'] != resourceStage):
             print(resourceId, ' status updated')
             landInfo = readResourceInfo(landData)
@@ -71,7 +74,7 @@ def queryResourceDetail(resourceId):
     print(url)
     response = httpGet(url)
     resObj = json.loads(response.text)
-    return resObj['data']
+    return resObj.get('data',None)
 
 def getFromDist(data, key):
     if key in data:
@@ -155,7 +158,7 @@ def insertZjgtjy(conn, landInfo):
         if i != len(columns) - 1:
             sql = sql + ','
     sql = sql + ")"
-    print(sql)
+    # print(sql)
     cursor = conn.cursor()
     cursor.execute(sql)
     conn.commit()
@@ -213,6 +216,8 @@ def run(config):
             if not ifExistLand(conn, land['resourceId']):
                 print('发现新土地信息：', land["resourceId"], land['resourceNumber'])
                 landData = queryResourceDetail(land['resourceId'])
+                if landData is None:
+                    continue
                 landInfo = readResourceInfo(landData)
                 print(landInfo)
                 insertZjgtjy(conn, landInfo)
